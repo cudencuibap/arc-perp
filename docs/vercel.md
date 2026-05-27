@@ -1,27 +1,17 @@
 # Vercel Frontend Deployment
 
-Deploy `apps/dex-web` to Vercel from the GitHub repository.
+Deploy the frontend to Vercel from the GitHub repository. Keep the Vercel project root at the repository root so npm can install workspace packages such as `@arc-perp/core`.
 
 ## Project Settings
 
 - Framework preset: Vite
-- Root directory: `apps/dex-web`
-- Build command: `npm run build`
-- Output directory: `dist`
+- Root directory: repository root
 - Install command: `npm install`
+- Build command: `npm --workspace @arc-perp/dex-web run build`
+- Output directory: `apps/dex-web/dist`
 - Node.js: 20+
 
-Because this is an npm workspace, Vercel should install from the repository root. If Vercel does not detect the workspace correctly, keep the root directory as the repository root and use:
-
-```bash
-npm --workspace @arc-perp/dex-web run build
-```
-
-with output directory:
-
-```text
-apps/dex-web/dist
-```
+The root `vercel.json` already encodes these settings. Do not set the Vercel root directory to `apps/dex-web`; doing so can hide `packages/core` from the build and produce `Cannot find module '@arc-perp/core'`.
 
 ## Environment Variables
 
