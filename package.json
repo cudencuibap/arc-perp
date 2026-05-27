@@ -1,0 +1,35 @@
+{
+  "name": "arc-perp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hybrid offchain/onchain perpetual exchange MVP for Arc testnet.",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "services/*",
+    "agents/*",
+    "simulation/*",
+    "contracts"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @arc-perp/core && npm run build --workspaces --if-present",
+    "dev:local": "node scripts/local-stack.mjs dev",
+    "start:local": "node scripts/local-stack.mjs start",
+    "dev:web": "npm --workspace @arc-perp/dex-web run dev",
+    "dev:gateway": "npm --workspace @arc-perp/websocket-gateway run dev",
+    "dev:engine": "npm --workspace @arc-perp/matching-engine run dev",
+    "dev:market-data": "npm --workspace @arc-perp/market-data run dev",
+    "dev:settlement": "npm --workspace @arc-perp/settlement-service run dev",
+    "start:gateway": "npm --workspace @arc-perp/websocket-gateway run start",
+    "start:engine": "npm --workspace @arc-perp/matching-engine run start",
+    "start:market-data": "npm --workspace @arc-perp/market-data run start",
+    "start:settlement": "npm --workspace @arc-perp/settlement-service run start",
+    "start:agents": "npm --workspace @arc-perp/market-makers run start"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "viem": "^2.51.0"
+  }
+}

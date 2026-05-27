@@ -1,0 +1,10 @@
+:root { font-family: Inter, system-ui, sans-serif; background: #101216; color: #ecf2f8; color-scheme: dark; }
+body { margin: 0; }
+main { min-height: 100vh; padding: 24px; display: grid; grid-template-columns: 1fr 220px; gap: 16px; }
+h1 { grid-column: 1 / -1; margin: 0; letter-spacing: 0; }
+.map { position: relative; min-height: 640px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; border: 1px solid #303945; border-radius: 8px; padding: 10px; background: #11171c; overflow: hidden; }
+article { border: 1px solid #394653; border-radius: 8px; padding: 14px; display: grid; align-content: end; gap: 8px; min-height: 160px; }
+span { color: #aeb9c4; }
+i { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #5fa8ff; box-shadow: 0 0 18px #5fa8ff; }
+aside { border: 1px solid #303945; border-radius: 8px; padding: 12px; display: grid; align-content: start; gap: 6px; background: #14191f; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; } .map { grid-template-columns: 1fr 1fr; } }

@@ -1,0 +1,11 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #edf4f7; background: #111417; color-scheme: dark; }
+body { margin: 0; }
+main { padding: 24px; }
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+h1 { margin: 0; font-size: 28px; letter-spacing: 0; }
+section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+article { border: 1px solid #2b343d; background: #171c21; border-radius: 8px; padding: 16px; display: grid; gap: 10px; }
+span { color: #9aa8b5; }
+strong { font-size: 28px; }
+pre { border: 1px solid #2b343d; border-radius: 8px; padding: 16px; overflow: auto; background: #0d1013; }
+@media (max-width: 800px) { section { grid-template-columns: 1fr 1fr; } }

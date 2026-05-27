@@ -1,0 +1,50 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+apps/*/dist/
+services/*/dist/
+agents/*/dist/
+packages/*/dist/
+simulation/*/dist/
+contracts/artifacts/
+contracts/cache/
+*.tsbuildinfo
+
+# local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+mnemonic*
+private-key*
+
+# runtime data
+data/
+runtime/
+cache/
+temp/
+tmp/
+logs/
+*.log
+/agent-wallets/
+data/agent-wallets/
+*.sqlite
+*.db
+
+# docker/local artifacts
+.docker/
+docker-data/
+docker-volumes/
+*.tar
+*.tar.gz
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

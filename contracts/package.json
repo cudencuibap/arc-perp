@@ -1,0 +1,15 @@
+{
+  "name": "@arc-perp/contracts",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/check-contracts.mjs && node scripts/compile.mjs",
+    "compile": "node scripts/compile.mjs",
+    "deploy:arc": "node scripts/deploy-arc.mjs"
+  },
+  "dependencies": {
+    "solc": "^0.8.35",
+    "viem": "^2.51.0"
+  }
+}

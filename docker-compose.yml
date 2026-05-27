@@ -1,0 +1,149 @@
+services:
+  matching-engine:
+    build: .
+    command: node services/matching-engine/dist/index.js
+    environment:
+      MATCHING_ENGINE_PORT: 4101
+      SETTLEMENT_SERVICE_URL: http://settlement-service:4105
+      FUNDING_SETTLEMENT_INTERVAL_MS: ${FUNDING_SETTLEMENT_INTERVAL_MS:-30000}
+    ports:
+      - "4101:4101"
+    depends_on:
+      - settlement-service
+
+  contracts:
+    build: .
+    command: npm --workspace @arc-perp/contracts run build
+
+  websocket-gateway:
+    build: .
+    command: node services/websocket-gateway/dist/index.js
+    environment:
+      WEBSOCKET_GATEWAY_PORT: 4100
+      MATCHING_ENGINE_URL: http://matching-engine:4101
+      MATCHING_ENGINE_WS: ws://matching-engine:4101/stream
+      MARKET_DATA_WS: ws://market-data:4102/stream
+      MARKET_DATA_HTTP_URL: http://market-data:4102
+      SETTLEMENT_SERVICE_URL: http://settlement-service:4105
+    ports:
+      - "4100:4100"
+    depends_on:
+      - matching-engine
+      - market-data
+      - settlement-service
+
+  settlement-service:
+    build: .
+    command: node services/settlement-service/dist/index.js
+    environment:
+      SETTLEMENT_SERVICE_PORT: 4105
+      ARC_RPC_URL: ${ARC_RPC_URL:-https://rpc.testnet.arc.network}
+      ARC_USDC_ADDRESS: ${ARC_USDC_ADDRESS:-}
+      COLLATERAL_VAULT_ADDRESS: ${COLLATERAL_VAULT_ADDRESS:-}
+      PERP_SETTLEMENT_ADDRESS: ${PERP_SETTLEMENT_ADDRESS:-}
+      TREASURY_VAULT_ADDRESS: ${TREASURY_VAULT_ADDRESS:-}
+      SETTLEMENT_PRIVATE_KEY: ${SETTLEMENT_PRIVATE_KEY:-}
+    ports:
+      - "4105:4105"
+
+  market-data:
+    build: .
+    command: node services/market-data/dist/index.js
+    environment:
+      MARKET_DATA_PORT: 4102
+      MATCHING_ENGINE_URL: http://matching-engine:4101
+      BINANCE_WS_URL: wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/ethusdt@ticker/solusdt@ticker
+      CHAINLINK_RPC_URL: ${CHAINLINK_RPC_URL:-}
+      CHAINLINK_FEED_ADDRESSES: ${CHAINLINK_FEED_ADDRESSES:-}
+      CHAINLINK_STREAMS_URL: ${CHAINLINK_STREAMS_URL:-}
+      CHAINLINK_FEED_IDS: ${CHAINLINK_FEED_IDS:-}
+      CHAINLINK_API_KEY: ${CHAINLINK_API_KEY:-}
+      CHAINLINK_API_SECRET: ${CHAINLINK_API_SECRET:-}
+    ports:
+      - "4102:4102"
+    depends_on:
+      - matching-engine
+
+  risk-engine:
+    build: .
+    command: node services/risk-engine/dist/index.js
+    environment:
+      MATCHING_ENGINE_URL: http://matching-engine:4101
+    depends_on:
+      - matching-engine
+
+  liquidation-engine:
+    build: .
+    command: node services/liquidation-engine/dist/index.js
+    environment:
+      MATCHING_ENGINE_URL: http://matching-engine:4101
+    depends_on:
+      - matching-engine
+
+  market-makers:
+    build: .
+    command: node agents/market-makers/dist/index.js
+    environment:
+      WEBSOCKET_GATEWAY_URL: http://websocket-gateway:4100
+      AGENT_WALLET_SECRET: ${AGENT_WALLET_SECRET:-}
+      AGENT_WALLET_DIR: /data/agent-wallets
+      AGENT_AUTO_DEPOSIT_USDC: ${AGENT_AUTO_DEPOSIT_USDC:-0}
+      MARKET_MAKER_AGENT_COUNT: ${MARKET_MAKER_AGENT_COUNT:-6}
+      MARKET_MAKER_INTERVAL_MS: ${MARKET_MAKER_INTERVAL_MS:-1800}
+    volumes:
+      - agent-wallets:/data/agent-wallets
+    depends_on:
+      - websocket-gateway
+
+  traders:
+    build: .
+    command: node agents/traders/dist/index.js
+    environment:
+      WEBSOCKET_GATEWAY_URL: http://websocket-gateway:4100
+      AGENT_WALLET_SECRET: ${AGENT_WALLET_SECRET:-}
+      AGENT_WALLET_DIR: /data/agent-wallets
+      AGENT_AUTO_DEPOSIT_USDC: ${AGENT_AUTO_DEPOSIT_USDC:-0}
+      TRADER_AGENT_COUNT: ${TRADER_AGENT_COUNT:-4}
+      TRADER_INTERVAL_MS: ${TRADER_INTERVAL_MS:-2500}
+    volumes:
+      - agent-wallets:/data/agent-wallets
+    depends_on:
+      - websocket-gateway
+
+  treasury:
+    build: .
+    command: node agents/treasury/dist/index.js
+    environment:
+      WEBSOCKET_GATEWAY_URL: http://websocket-gateway:4100
+      AGENT_WALLET_SECRET: ${AGENT_WALLET_SECRET:-}
+      AGENT_WALLET_DIR: /data/agent-wallets
+    volumes:
+      - agent-wallets:/data/agent-wallets
+    depends_on:
+      - websocket-gateway
+
+  dex-web:
+    build: .
+    command: npm --workspace @arc-perp/dex-web run preview -- --host 0.0.0.0 --port 4173
+    environment:
+      VITE_API_URL: http://localhost:4100
+      VITE_WS_URL: ws://localhost:4100/ws
+      VITE_WALLETCONNECT_PROJECT_ID: ${VITE_WALLETCONNECT_PROJECT_ID:-}
+    ports:
+      - "4173:4173"
+      - "5173:4173"
+    depends_on:
+      - websocket-gateway
+
+  admin-panel:
+    build: .
+    command: npm --workspace @arc-perp/admin-panel run dev -- --host 0.0.0.0 --port 5174
+    environment:
+      VITE_API_URL: http://localhost:4100
+    ports:
+      - "5174:5174"
+    depends_on:
+      - websocket-gateway
+
+volumes:
+  agent-wallets:
