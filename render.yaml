@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: arc-perp-market-data
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build --workspace @arc-perp/market-data
+    startCommand: npm run start --workspace @arc-perp/market-data
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20

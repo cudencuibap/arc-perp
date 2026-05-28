@@ -2,6 +2,8 @@
 
 Arc Perp backend services can run on Render as separate Node.js web services. Use Node.js 20 and deploy from the same GitHub repository.
 
+For `market-data`, use the root `render.yaml` blueprint or configure the service with the repository root as the build context. Do not set the Render root directory to `services/market-data`; the service depends on the local workspace package `@arc-perp/core`.
+
 ## Services
 
 Create one Render service for each backend process:
@@ -9,7 +11,7 @@ Create one Render service for each backend process:
 | Service | Workspace | Build command | Start command |
 | --- | --- | --- | --- |
 | matching-engine | `@arc-perp/matching-engine` | `npm install && npm run build` | `npm --workspace @arc-perp/matching-engine run start` |
-| market-data | `@arc-perp/market-data` | `npm install && npm run build` | `npm --workspace @arc-perp/market-data run start` |
+| market-data | `@arc-perp/market-data` | `npm ci && npm run build --workspace @arc-perp/market-data` | `npm run start --workspace @arc-perp/market-data` |
 | settlement-service | `@arc-perp/settlement-service` | `npm install && npm run build` | `npm --workspace @arc-perp/settlement-service run start` |
 | websocket-gateway | `@arc-perp/websocket-gateway` | `npm install && npm run build` | `npm --workspace @arc-perp/websocket-gateway run start` |
 

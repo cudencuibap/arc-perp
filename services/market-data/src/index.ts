@@ -57,7 +57,7 @@ const defaultPrices: Record<MarketSymbol, number> = {
   "SOL-PERP": 145
 };
 
-const port = Number(process.env.MARKET_DATA_PORT ?? 4102);
+const port = Number(process.env.MARKET_DATA_PORT ?? process.env.PORT ?? 4102);
 const engineUrl = process.env.MATCHING_ENGINE_URL ?? "http://localhost:4101";
 const binanceWsUrl = process.env.BINANCE_WS_URL ?? `wss://stream.binance.com:9443/stream?streams=${symbols.map((symbol) => `${binanceSymbols[symbol]}@ticker`).join("/")}`;
 const chainlinkPollMs = Number(process.env.CHAINLINK_POLL_MS ?? 1000);
