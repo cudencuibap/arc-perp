@@ -3,12 +3,12 @@ import { createRoot } from "react-dom/client";
 import { RadioTower } from "lucide-react";
 import "./styles.css";
 
-const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:4100";
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
 
 function Admin() {
   const [state, setState] = useState<{ positions: unknown[]; balances: unknown[]; trades: unknown[]; books: unknown[] }>();
   useEffect(() => {
-    const id = setInterval(() => fetch(`${apiUrl}/api/state`).then((res) => res.json()).then(setState).catch(() => undefined), 1000);
+    const id = setInterval(() => fetch(`${API_BASE_URL}/api/state`).then((res) => res.json()).then(setState).catch(() => undefined), 1000);
     return () => clearInterval(id);
   }, []);
   return <main>

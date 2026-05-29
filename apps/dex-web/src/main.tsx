@@ -10,8 +10,8 @@ import { injected, metaMask, walletConnect } from "wagmi/connectors";
 import { formatUnits, parseUnits } from "viem";
 import "./styles.css";
 
-const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:4100";
-const wsUrl = import.meta.env.VITE_WS_URL ?? "ws://localhost:4100/ws";
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
+const WS_BASE_URL = import.meta.env.VITE_WS_URL ?? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`;
 const symbols: MarketSymbol[] = ["BTC-PERP", "ETH-PERP", "SOL-PERP"];
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 const queryClient = new QueryClient();
@@ -67,7 +67,7 @@ function App() {
       reconnectTimer.current = window.setTimeout(() => {
         if (closed) return;
         setStatus("connecting");
-        const socket = new WebSocket(wsUrl);
+        const socket = new WebSocket(WS_BASE_URL);
         socketRef.current = socket;
 
         socket.onopen = () => setStatus("live");
@@ -130,7 +130,7 @@ function App() {
       }, delay);
     }
 
-    fetch(`${apiUrl}/api/state`).then((res) => res.json()).then((snapshot: MarketState) => {
+    fetch(`${API_BASE_URL}/api/state`).then((res) => res.json()).then((snapshot: MarketState) => {
       setState(snapshot);
       setTrades(snapshot.trades.slice().reverse());
     }).catch(() => undefined);
@@ -226,7 +226,7 @@ function WalletControls() {
   const [modal, setModal] = useState<"deposit" | "withdraw" | undefined>();
 
   useEffect(() => {
-    fetch(`${apiUrl}/api/onchain/config`).then((res) => res.json()).then(setConfig).catch(() => undefined);
+    fetch(`${API_BASE_URL}/api/onchain/config`).then((res) => res.json()).then(setConfig).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -387,7 +387,7 @@ function ChartPanel({ selected, market, trades, points }: { selected: MarketSymb
   useEffect(() => {
     let cancelled = false;
     setHistoryStatus("loading 30d");
-    fetch(`${apiUrl}/api/history?symbol=${selected}&interval=${timeframe}&days=30`)
+    fetch(`${API_BASE_URL}/api/history?symbol=${selected}&interval=${timeframe}&days=30`)
       .then((res) => res.json())
       .then((payload: { candles?: HistoryCandle[]; source?: string }) => {
         if (cancelled) return;
@@ -608,7 +608,7 @@ function OrderTicket({ selected, mark, onLocalOrder }: { selected: MarketSymbol;
   }, [selected, mark, side]);
 
   async function place(type: "limit" | "market", qty: number, orderPrice?: number) {
-    const response = await fetch(`${apiUrl}/api/orders`, {
+    const response = await fetch(`${API_BASE_URL}/api/orders`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
