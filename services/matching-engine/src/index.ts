@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { WebSocketServer } from "ws";
 import { createWorldState, MatchingEngine, type EngineEvent, type MarketSymbol, type OrderRequest } from "@arc-perp/core";
 
-const port = Number(process.env.MATCHING_ENGINE_PORT ?? 4101);
+const port = Number(process.env.MATCHING_ENGINE_PORT ?? process.env.PORT ?? 4101);
 const settlementUrl = process.env.SETTLEMENT_SERVICE_URL ?? "http://localhost:4105";
 const app = express();
 const server = createServer(app);

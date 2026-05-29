@@ -1,5 +1,16 @@
 services:
   - type: web
+    name: arc-perp-matching-engine
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build --workspace @arc-perp/matching-engine
+    startCommand: npm run start --workspace @arc-perp/matching-engine
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+
+  - type: web
     name: arc-perp-market-data
     runtime: node
     plan: free
