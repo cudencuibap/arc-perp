@@ -10,8 +10,11 @@ import { injected, metaMask, walletConnect } from "wagmi/connectors";
 import { formatUnits, parseUnits } from "viem";
 import "./styles.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
-const WS_BASE_URL = import.meta.env.VITE_WS_URL ?? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`;
+const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const MATCHING_ENGINE_URL = import.meta.env.VITE_MATCHING_ENGINE_URL ?? (isLocalHost ? "http://localhost:4101" : "https://arc-perp-matching-engine.onrender.com");
+const MARKET_DATA_URL = import.meta.env.VITE_MARKET_DATA_URL ?? (isLocalHost ? "http://localhost:4102" : "https://arc-perp-backend.onrender.com");
+const ONCHAIN_CONFIG_URL = import.meta.env.VITE_ONCHAIN_CONFIG_URL;
+const WS_BASE_URL = import.meta.env.VITE_WS_URL ?? (isLocalHost ? "ws://localhost:4100/ws" : "wss://arc-perp-websocket-gateway.onrender.com/ws");
 const symbols: MarketSymbol[] = ["BTC-PERP", "ETH-PERP", "SOL-PERP"];
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 const queryClient = new QueryClient();
@@ -130,7 +133,7 @@ function App() {
       }, delay);
     }
 
-    fetch(`${API_BASE_URL}/api/state`).then((res) => res.json()).then((snapshot: MarketState) => {
+    fetch(`${MATCHING_ENGINE_URL}/state`).then((res) => res.json()).then((snapshot: MarketState) => {
       setState(snapshot);
       setTrades(snapshot.trades.slice().reverse());
     }).catch(() => undefined);
@@ -226,7 +229,8 @@ function WalletControls() {
   const [modal, setModal] = useState<"deposit" | "withdraw" | undefined>();
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/onchain/config`).then((res) => res.json()).then(setConfig).catch(() => undefined);
+    if (!ONCHAIN_CONFIG_URL) return;
+    fetch(ONCHAIN_CONFIG_URL).then((res) => res.json()).then(setConfig).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -387,7 +391,7 @@ function ChartPanel({ selected, market, trades, points }: { selected: MarketSymb
   useEffect(() => {
     let cancelled = false;
     setHistoryStatus("loading 30d");
-    fetch(`${API_BASE_URL}/api/history?symbol=${selected}&interval=${timeframe}&days=30`)
+    fetch(`${MARKET_DATA_URL}/history?symbol=${selected}&interval=${timeframe}&days=30`)
       .then((res) => res.json())
       .then((payload: { candles?: HistoryCandle[]; source?: string }) => {
         if (cancelled) return;
@@ -608,7 +612,7 @@ function OrderTicket({ selected, mark, onLocalOrder }: { selected: MarketSymbol;
   }, [selected, mark, side]);
 
   async function place(type: "limit" | "market", qty: number, orderPrice?: number) {
-    const response = await fetch(`${API_BASE_URL}/api/orders`, {
+    const response = await fetch(`${MATCHING_ENGINE_URL}/orders`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

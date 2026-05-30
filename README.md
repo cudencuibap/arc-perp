@@ -85,8 +85,10 @@ Use `.env.example` as the template. Do not commit `.env` or real secrets.
 Important public frontend variables:
 
 ```bash
-VITE_API_URL=https://your-render-gateway.onrender.com
-VITE_WS_URL=wss://your-render-gateway.onrender.com/ws
+VITE_MATCHING_ENGINE_URL=https://arc-perp-matching-engine.onrender.com
+VITE_MARKET_DATA_URL=https://arc-perp-backend.onrender.com
+VITE_WS_URL=wss://arc-perp-websocket-gateway.onrender.com/ws
+VITE_ONCHAIN_CONFIG_URL=
 VITE_WALLETCONNECT_PROJECT_ID=
 ```
 

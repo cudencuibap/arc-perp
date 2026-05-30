@@ -50,11 +50,13 @@ Never put private keys or secrets in GitHub.
 
 ## Gateway
 
-The frontend should talk only to `websocket-gateway`:
+The frontend should use the deployed service that owns each route:
 
 ```bash
-VITE_API_URL=https://arc-perp-websocket-gateway.onrender.com
+VITE_MATCHING_ENGINE_URL=https://arc-perp-matching-engine.onrender.com
+VITE_MARKET_DATA_URL=https://arc-perp-backend.onrender.com
 VITE_WS_URL=wss://arc-perp-websocket-gateway.onrender.com/ws
+VITE_ONCHAIN_CONFIG_URL=
 ```
 
 Use those values in Vercel.

@@ -3,12 +3,13 @@ import { createRoot } from "react-dom/client";
 import { RadioTower } from "lucide-react";
 import "./styles.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
+const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const MATCHING_ENGINE_URL = import.meta.env.VITE_MATCHING_ENGINE_URL ?? (isLocalHost ? "http://localhost:4101" : "https://arc-perp-matching-engine.onrender.com");
 
 function Admin() {
   const [state, setState] = useState<{ positions: unknown[]; balances: unknown[]; trades: unknown[]; books: unknown[] }>();
   useEffect(() => {
-    const id = setInterval(() => fetch(`${API_BASE_URL}/api/state`).then((res) => res.json()).then(setState).catch(() => undefined), 1000);
+    const id = setInterval(() => fetch(`${MATCHING_ENGINE_URL}/state`).then((res) => res.json()).then(setState).catch(() => undefined), 1000);
     return () => clearInterval(id);
   }, []);
   return <main>

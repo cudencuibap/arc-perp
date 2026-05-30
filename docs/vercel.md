@@ -18,8 +18,10 @@ The root `vercel.json` already encodes these settings. Do not set the Vercel roo
 Set these in Vercel:
 
 ```bash
-VITE_API_URL=https://arc-perp-websocket-gateway.onrender.com
+VITE_MATCHING_ENGINE_URL=https://arc-perp-matching-engine.onrender.com
+VITE_MARKET_DATA_URL=https://arc-perp-backend.onrender.com
 VITE_WS_URL=wss://arc-perp-websocket-gateway.onrender.com/ws
+VITE_ONCHAIN_CONFIG_URL=
 VITE_WALLETCONNECT_PROJECT_ID=
 ```
 
@@ -27,15 +29,13 @@ Do not expose backend private keys, settlement private keys, Chainlink secrets, 
 
 ## Backend Requirement
 
-The Vercel frontend expects the Render gateway to expose:
+The Vercel frontend talks directly to the deployed service that owns each route:
 
-- `GET /health`
-- `GET /api/state`
-- `GET /api/history`
-- `POST /api/orders`
-- `GET /api/onchain/config`
-- `GET /api/onchain/accounts/:address`
-- `WS /ws`
+- Matching engine: `GET /state`, `POST /orders`
+- Market data: `GET /history`
+- WebSocket gateway: `WS /ws`
+
+Set `VITE_ONCHAIN_CONFIG_URL` only when a settlement/onchain config endpoint is deployed. Leaving it empty disables the optional collateral modal request and avoids calling a missing endpoint.
 
 ## Local Preview
 
