@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
-  "buildCommand": "npm --workspace @arc-perp/dex-web run build",
-  "outputDirectory": "apps/dex-web/dist",
+  "buildCommand": "npm --workspace @arc-perp/dex-web run build:vercel",
+  "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
     {

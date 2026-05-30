@@ -7,8 +7,8 @@ Deploy the frontend to Vercel from the GitHub repository. Keep the Vercel projec
 - Framework preset: Vite
 - Root directory: repository root
 - Install command: `npm install`
-- Build command: `npm --workspace @arc-perp/dex-web run build`
-- Output directory: `apps/dex-web/dist`
+- Build command: `npm --workspace @arc-perp/dex-web run build:vercel`
+- Output directory: `dist`
 - Node.js: 20+
 
 The root `vercel.json` already encodes these settings. Do not set the Vercel root directory to `apps/dex-web`; doing so can hide `packages/core` from the build and produce `Cannot find module '@arc-perp/core'`.
