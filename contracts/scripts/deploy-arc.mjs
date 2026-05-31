@@ -19,8 +19,10 @@ const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
 const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl) });
 const artifactDir = fileURLToPath(new URL("../artifacts", import.meta.url));
 
-const useMockUsdc = process.env.DEPLOY_MOCK_USDC === "true" || !process.env.ARC_USDC_ADDRESS;
-const usdc = useMockUsdc ? await deploy("MockUSDC") : process.env.ARC_USDC_ADDRESS;
+const CANONICAL_ARC_USDC = "0x3600000000000000000000000000000000000000";
+const useMockUsdc = process.env.DEPLOY_MOCK_USDC === "true";
+const usdc = useMockUsdc ? await deploy("MockUSDC") : (process.env.ARC_USDC_ADDRESS ?? CANONICAL_ARC_USDC);
+if (useMockUsdc) console.warn("DEPLOY_MOCK_USDC=true: deploying MockUSDC. This token is NOT interoperable with the Arc faucet, CCTP, or Gateway.");
 const treasury = await deploy("TreasuryVault");
 const collateral = await deploy("CollateralVault", [usdc, treasury]);
 const settlement = await deploy("PerpSettlement", [collateral]);
