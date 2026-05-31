@@ -12,7 +12,7 @@ const account = privateKeyToAccount(rawKey.startsWith("0x") ? rawKey : `0x${rawK
 const chain = {
   id: 5042002,
   name: "Arc Testnet",
-  nativeCurrency: { name: "Arc", symbol: "ARC", decimals: 18 },
+  nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
   rpcUrls: { default: { http: [rpcUrl] } }
 };
 const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });

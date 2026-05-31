@@ -1,7 +1,7 @@
 export const arcTestnet = {
   id: 5042002,
   name: "Arc Testnet",
-  nativeCurrency: { name: "Arc", symbol: "ARC", decimals: 18 },
+  nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
   rpcUrls: {
     default: { http: ["https://rpc.testnet.arc.network"] },
     public: { http: ["https://rpc.testnet.arc.network"] }

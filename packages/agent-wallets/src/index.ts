@@ -31,7 +31,7 @@ async function depositCollateral(privateKey: `0x${string}`, amountUsdc: number, 
   const chain = {
     id: config.chainId,
     name: "Arc Testnet",
-    nativeCurrency: { name: "Arc", symbol: "ARC", decimals: 18 },
+    nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
     rpcUrls: { default: { http: [config.rpcUrl] } }
   } as const;
   const publicClient = createPublicClient({ chain, transport: http(config.rpcUrl) });
