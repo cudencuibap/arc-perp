@@ -6,6 +6,14 @@ This repo keeps the realtime offchain matching engine and adds Arc testnet settl
 
 - Chain ID: `5042002`
 - RPC: `https://rpc.testnet.arc.network`
+- Explorer: `https://testnet.arcscan.app`
+- USDC (canonical, gas + ERC-20): `0x3600000000000000000000000000000000000000`
+
+## Get Testnet USDC
+
+USDC is the native gas token on Arc. Fund any deployer or trader wallet from the Circle faucet before sending transactions:
+
+- Faucet: `https://faucet.circle.com`
 
 ## Deploy Contracts
 

@@ -250,6 +250,7 @@ function WalletControls() {
     <button onClick={() => setModal("deposit")}>Deposit</button>
     <button onClick={() => setModal("withdraw")}>Withdraw</button>
     <span title="Gas-USDC balance (18 decimals, native gas on Arc). Collateral USDC is the 6-decimal ERC-20.">{nativeBalance ? `${Number(formatUnits(nativeBalance.value, nativeBalance.decimals)).toFixed(4)} ${nativeBalance.symbol}` : "0 USDC"}</span>
+    {(!nativeBalance || nativeBalance.value === 0n) && <a className="faucet-link" href="https://faucet.circle.com" target="_blank" rel="noreferrer">Faucet</a>}
     <button onClick={() => disconnect()}>{shortAddress(address)}</button>
     {modal && config && <CollateralModal mode={modal} config={config} onClose={() => setModal(undefined)} />}
   </div>;
