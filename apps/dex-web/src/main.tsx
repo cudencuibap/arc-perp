@@ -249,7 +249,7 @@ function WalletControls() {
     <button className={chainId === arcTestnet.id ? "network ok" : "network warn"} onClick={() => switchChain({ chainId: arcTestnet.id })}>{chainId === arcTestnet.id ? "Arc testnet" : "Switch Arc"}</button>
     <button onClick={() => setModal("deposit")}>Deposit</button>
     <button onClick={() => setModal("withdraw")}>Withdraw</button>
-    <span>{nativeBalance ? `${Number(formatUnits(nativeBalance.value, nativeBalance.decimals)).toFixed(4)} ${nativeBalance.symbol}` : "0 ARC"}</span>
+    <span title="Gas-USDC balance (18 decimals, native gas on Arc). Collateral USDC is the 6-decimal ERC-20.">{nativeBalance ? `${Number(formatUnits(nativeBalance.value, nativeBalance.decimals)).toFixed(4)} ${nativeBalance.symbol}` : "0 USDC"}</span>
     <button onClick={() => disconnect()}>{shortAddress(address)}</button>
     {modal && config && <CollateralModal mode={modal} config={config} onClose={() => setModal(undefined)} />}
   </div>;
