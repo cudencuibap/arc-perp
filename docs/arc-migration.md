@@ -93,6 +93,10 @@ Mirrors P0-2 from the docs side. Reads as if MockUSDC is the expected path; shou
 
 **Fix:** Rewrite the "Deploy Contracts" section to default to the canonical USDC and add a one-paragraph note on faucet → vault → trade flow.
 
+### ✅ P1-6. tsx couldn't resolve `@arc-perp/core/onchain` from settlement-service — **DONE** (`820fed2`)
+
+Found while smoke-testing `npm run dev:local` after the P0 commits. `tsconfig.base.json` mapped `paths` to `.d.ts` files (tsx loaded empty modules at runtime), and `packages/core/package.json` exports were missing a `default` condition (tsx's CJS path hit `ERR_PACKAGE_PATH_NOT_EXPORTED`). Dropped the `paths` block and added `default` to both export entries. Strictly a dev-mode unblocker; build was already green.
+
 ### P1-5. `.env.example` missing canonical USDC and Arc-specific defaults
 
 - `.env.example:33-37` leaves `ARC_USDC_ADDRESS`, vault, settlement, treasury blank.
@@ -151,7 +155,7 @@ Cosmetic — the UI uses `nativeBalance.decimals` (18) for formatting, while eve
 | Priority | Count | Status | Items |
 |---|---|---|---|
 | **P0** | 4 | ✅ 4 / 4 done | Native currency symbol; MockUSDC default deploy; "0 ARC" UI label; no faucet pointer |
-| **P1** | 5 | ☐ 0 / 5 | Centralize `arcTestnet` to viem; chain-id guard; keystore option; rewrite onchain docs; canonical USDC in env |
+| **P1** | 6 | ✅ 1 / 6 | Centralize `arcTestnet` to viem; chain-id guard; keystore option; rewrite onchain docs; canonical USDC in env; tsx subpath resolution (done in `820fed2`) |
 | **P2** | 5 | ☐ 0 / 5 | Dead Chainlink config; missing Arc facts in docs; MockUSDC naming; fallback transport; gas vs collateral decimal helper |
 
 **Effort estimate**
