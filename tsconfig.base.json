@@ -8,11 +8,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@arc-perp/core": ["packages/core/dist/index.d.ts"],
-      "@arc-perp/core/onchain": ["packages/core/dist/onchain.d.ts"]
-    },
     "declaration": true,
     "sourceMap": true
   }
