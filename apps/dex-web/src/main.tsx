@@ -187,7 +187,9 @@ function App() {
       <MarketStrip markets={state?.markets ?? []} selected={selected} setSelected={setSelected} />
       <section className="trade-layout">
         <div className="left-stack">
-          <ChartPanel selected={selected} market={market} trades={recentTrades} points={history[selected] ?? []} />
+          <ErrorBoundary fallback={<article className="panel chart-panel"><div className="ticket-note">Chart unavailable — check console. Reload to retry.</div></article>}>
+            <ChartPanel selected={selected} market={market} trades={recentTrades} points={history[selected] ?? []} />
+          </ErrorBoundary>
           <AccountDock positions={allPositions} balances={balances} selected={selected} orders={localOrders} trades={trades} />
           <World world={world} stress={market?.regime === "stress" ? 1 : market?.regime === "volatile" ? 0.72 : 0.35} />
         </div>
@@ -343,6 +345,13 @@ function MarketHeader({ selected, setSelected, market, direction }: { selected: 
   </header>;
 }
 
+class ErrorBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { error?: Error }> {
+  state: { error?: Error } = {};
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: React.ErrorInfo) { console.error("ErrorBoundary caught:", error, info); }
+  render() { return this.state.error ? this.props.fallback : this.props.children; }
+}
+
 function ChartPanel({ selected, market, trades, points }: { selected: MarketSymbol; market?: MarketMeta; trades: Trade[]; points: PricePoint[] }) {
   const [timeframe, setTimeframe] = useState<Timeframe>("5m");
   const [tool, setTool] = useState<ChartTool>("crosshair");
@@ -374,7 +383,11 @@ function ChartPanel({ selected, market, trades, points }: { selected: MarketSymb
   const volumeHeight = 58;
   const lowerTop = 366;
   const lowerHeight = 42;
-  const prices = candles.flatMap((candle) => [candle.high, candle.low, candle.close, ...metrics.bbUpper, ...metrics.bbLower]).filter(Number.isFinite);
+  const prices = [
+    ...candles.flatMap((candle) => [candle.high, candle.low, candle.close]),
+    ...metrics.bbUpper,
+    ...metrics.bbLower
+  ].filter(Number.isFinite);
   const minPrice = Math.min(...prices, market?.markPrice ?? 0);
   const maxPrice = Math.max(...prices, market?.markPrice ?? 1);
   const pricePad = Math.max((maxPrice - minPrice) * 0.12, (market?.markPrice ?? 1) * 0.002);
