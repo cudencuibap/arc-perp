@@ -9,6 +9,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: SETTLEMENT_SERVICE_URL
+        value: https://arc-perp-settlement-service.onrender.com
 
   - type: web
     name: arc-perp-market-data
@@ -20,3 +22,49 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: MATCHING_ENGINE_URL
+        value: https://arc-perp-matching-engine.onrender.com
+
+  - type: web
+    name: arc-perp-websocket-gateway
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build --workspace @arc-perp/websocket-gateway
+    startCommand: npm run start --workspace @arc-perp/websocket-gateway
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: MATCHING_ENGINE_URL
+        value: https://arc-perp-matching-engine.onrender.com
+      - key: MATCHING_ENGINE_WS
+        value: wss://arc-perp-matching-engine.onrender.com/stream
+      - key: MARKET_DATA_HTTP_URL
+        value: https://arc-perp-market-data.onrender.com
+      - key: MARKET_DATA_WS
+        value: wss://arc-perp-market-data.onrender.com/stream
+      - key: SETTLEMENT_SERVICE_URL
+        value: https://arc-perp-settlement-service.onrender.com
+
+  - type: web
+    name: arc-perp-settlement-service
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build --workspace @arc-perp/settlement-service
+    startCommand: npm run start --workspace @arc-perp/settlement-service
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: ARC_RPC_URL
+        value: https://rpc.testnet.arc.network
+      - key: ARC_USDC_ADDRESS
+        value: "0x3600000000000000000000000000000000000000"
+      - key: COLLATERAL_VAULT_ADDRESS
+        value: "0xeba02c6911c35e5db6b984bb49db9f281c181c70"
+      - key: PERP_SETTLEMENT_ADDRESS
+        value: "0xc7ba31fd7284491b1a93bd046361f76ffdd5a915"
+      - key: TREASURY_VAULT_ADDRESS
+        value: "0xe69d693968b3626c49d600f6ffaf8682f63b1ba5"
+      - key: SETTLEMENT_PRIVATE_KEY
+        sync: false
