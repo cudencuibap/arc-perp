@@ -50,7 +50,7 @@ services:
     name: arc-perp-settlement-service
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build --workspace @arc-perp/settlement-service
+    buildCommand: npm ci && npm run build --workspace @arc-perp/core && npm run build --workspace @arc-perp/settlement-service
     startCommand: npm run start --workspace @arc-perp/settlement-service
     healthCheckPath: /health
     envVars:
