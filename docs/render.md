@@ -54,7 +54,7 @@ The frontend should use the deployed service that owns each route:
 
 ```bash
 VITE_MATCHING_ENGINE_URL=https://arc-perp-matching-engine.onrender.com
-VITE_MARKET_DATA_URL=https://arc-perp-backend.onrender.com
+VITE_MARKET_DATA_URL=https://arc-perp-market-data.onrender.com
 VITE_WS_URL=wss://arc-perp-websocket-gateway.onrender.com/ws
 VITE_ONCHAIN_CONFIG_URL=
 ```

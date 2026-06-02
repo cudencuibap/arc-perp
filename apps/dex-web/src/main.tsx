@@ -12,7 +12,7 @@ import "./styles.css";
 
 const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 const MATCHING_ENGINE_URL = import.meta.env.VITE_MATCHING_ENGINE_URL ?? (isLocalHost ? "http://localhost:4101" : "https://arc-perp-matching-engine.onrender.com");
-const MARKET_DATA_URL = import.meta.env.VITE_MARKET_DATA_URL ?? (isLocalHost ? "http://localhost:4102" : "https://arc-perp-backend.onrender.com");
+const MARKET_DATA_URL = import.meta.env.VITE_MARKET_DATA_URL ?? (isLocalHost ? "http://localhost:4102" : "https://arc-perp-market-data.onrender.com");
 const ONCHAIN_CONFIG_URL = import.meta.env.VITE_ONCHAIN_CONFIG_URL;
 const WS_BASE_URL = import.meta.env.VITE_WS_URL ?? (isLocalHost ? "ws://localhost:4100/ws" : "wss://arc-perp-websocket-gateway.onrender.com/ws");
 const symbols: MarketSymbol[] = ["BTC-PERP", "ETH-PERP", "SOL-PERP"];
