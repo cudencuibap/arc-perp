@@ -28,6 +28,31 @@ const wagmiConfig = createConfig({
   ]
 });
 
+const ARC_CHAIN_ID_HEX = `0x${arcTestnet.id.toString(16)}`;
+
+type Eip1193 = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
+
+async function ensureArcTestnet(): Promise<void> {
+  const ethereum = (window as unknown as { ethereum?: Eip1193 }).ethereum;
+  if (!ethereum) throw new Error("No EIP-1193 wallet detected");
+  try {
+    await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: ARC_CHAIN_ID_HEX }] });
+  } catch (err) {
+    const code = (err as { code?: number })?.code;
+    if (code !== 4902) throw err;
+    await ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [{
+        chainId: ARC_CHAIN_ID_HEX,
+        chainName: "Arc Testnet",
+        nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
+        rpcUrls: ["https://rpc.testnet.arc.network"],
+        blockExplorerUrls: ["https://testnet.arcscan.app"]
+      }]
+    });
+  }
+}
+
 type Direction = "up" | "down" | "flat";
 type GatewayEvent = { type: "gateway"; payload: { connected?: boolean; upstream?: string; marketData?: string; ts: number } };
 type MarketDataEvent =
@@ -247,10 +272,11 @@ function WalletControls() {
     </div>;
   }
 
+  const onArc = chainId === arcTestnet.id;
   return <div className="wallet-connected">
-    <button className={chainId === arcTestnet.id ? "network ok" : "network warn"} onClick={() => switchChain({ chainId: arcTestnet.id })}>{chainId === arcTestnet.id ? "Arc testnet" : "Switch Arc"}</button>
-    <button onClick={() => setModal("deposit")}>Deposit</button>
-    <button onClick={() => setModal("withdraw")}>Withdraw</button>
+    <button className={onArc ? "network ok" : "network warn"} onClick={() => ensureArcTestnet().catch((err) => console.error("[ARC SWITCH]", err))}>{onArc ? "Arc testnet" : "Switch to Arc Testnet"}</button>
+    <button onClick={() => setModal("deposit")} disabled={!onArc} title={onArc ? "" : "Switch to Arc Testnet first"}>Deposit</button>
+    <button onClick={() => setModal("withdraw")} disabled={!onArc} title={onArc ? "" : "Switch to Arc Testnet first"}>Withdraw</button>
     <span title="Gas-USDC balance (18 decimals, native gas on Arc). Collateral USDC is the 6-decimal ERC-20.">{nativeBalance ? `${Number(formatUnits(nativeBalance.value, nativeBalance.decimals)).toFixed(4)} ${nativeBalance.symbol}` : "0 USDC"}</span>
     {(!nativeBalance || nativeBalance.value === 0n) && <a className="faucet-link" href="https://faucet.circle.com" target="_blank" rel="noreferrer">Faucet</a>}
     <button onClick={() => disconnect()}>{shortAddress(address)}</button>
@@ -260,6 +286,8 @@ function WalletControls() {
 
 function CollateralModal({ mode, config, onClose }: { mode: "deposit" | "withdraw"; config: OnchainConfig; onClose: () => void }) {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
   const [amount, setAmount] = useState("100");
   const [status, setStatus] = useState("");
   const { writeContractAsync } = useWriteContract();
@@ -280,15 +308,33 @@ function CollateralModal({ mode, config, onClose }: { mode: "deposit" | "withdra
       setStatus("Contracts not configured");
       return;
     }
+    console.log("[DEPOSIT DEBUG]", {
+      walletChainId: chainId,
+      targetChainId: arcTestnet.id,
+      match: chainId === arcTestnet.id,
+      usdcAddress: config.usdcAddress,
+      vaultAddress: config.collateralVaultAddress
+    });
+    if (chainId !== arcTestnet.id) {
+      console.error("[DEPOSIT BLOCKED] Wrong chain. Attempting to switch...");
+      setStatus("Switching to Arc Testnet");
+      try {
+        await ensureArcTestnet();
+        await switchChainAsync({ chainId: arcTestnet.id });
+      } catch (err) {
+        setStatus(`Chain switch failed: ${err instanceof Error ? err.message : "rejected"}`);
+        return;
+      }
+    }
     try {
       const value = parseUnits(amount || "0", 6);
       setStatus(mode === "deposit" ? "Approving USDC" : "Withdrawing");
       if (mode === "deposit") {
-        await writeContractAsync({ address: config.usdcAddress, abi: erc20Abi, functionName: "approve", args: [config.collateralVaultAddress, value] });
+        await writeContractAsync({ chainId: arcTestnet.id, address: config.usdcAddress, abi: erc20Abi, functionName: "approve", args: [config.collateralVaultAddress, value] });
         setStatus("Depositing");
-        await writeContractAsync({ address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "deposit", args: [value] });
+        await writeContractAsync({ chainId: arcTestnet.id, address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "deposit", args: [value] });
       } else {
-        await writeContractAsync({ address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "withdraw", args: [value] });
+        await writeContractAsync({ chainId: arcTestnet.id, address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "withdraw", args: [value] });
       }
       setStatus("Transaction sent");
     } catch (error) {
