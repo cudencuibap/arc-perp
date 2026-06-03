@@ -59,7 +59,7 @@ const defaultPrices: Record<MarketSymbol, number> = {
 
 const port = Number(process.env.MARKET_DATA_PORT ?? process.env.PORT ?? 4102);
 const engineUrl = process.env.MATCHING_ENGINE_URL ?? "http://localhost:4101";
-const binanceWsUrl = process.env.BINANCE_WS_URL ?? `wss://stream.binance.com:9443/stream?streams=${symbols.map((symbol) => `${binanceSymbols[symbol]}@ticker`).join("/")}`;
+const binanceWsUrl = process.env.BINANCE_WS_URL ?? `wss://data-stream.binance.vision/stream?streams=${symbols.map((symbol) => `${binanceSymbols[symbol]}@ticker`).join("/")}`;
 const chainlinkPollMs = Number(process.env.CHAINLINK_POLL_MS ?? 1000);
 const publishMs = Number(process.env.MARKET_DATA_PUBLISH_MS ?? 200);
 const staleAfterMs = Number(process.env.MARKET_DATA_STALE_MS ?? 6000);
