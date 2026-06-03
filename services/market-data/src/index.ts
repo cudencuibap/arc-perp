@@ -309,7 +309,7 @@ async function historicalCandles(symbol: MarketSymbol, interval: string, days: n
   let startTime = endTime - days * 86_400_000;
   const candles: HistoryCandle[] = [];
   while (startTime < endTime) {
-    const url = new URL("https://api.binance.com/api/v3/klines");
+    const url = new URL("https://data-api.binance.vision/api/v3/klines");
     url.searchParams.set("symbol", binanceSymbols[symbol].toUpperCase());
     url.searchParams.set("interval", safeInterval);
     url.searchParams.set("startTime", String(startTime));
