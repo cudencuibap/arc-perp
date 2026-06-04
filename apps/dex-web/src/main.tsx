@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CandlestickSeries, ColorType, createChart, HistogramSeries, LineSeries, type IChartApi, type UTCTimestamp } from "lightweight-charts";
 import { createConfig, http, WagmiProvider, useAccount, useBalance, useChainId, useConnect, useDisconnect, useReadContracts, useSwitchChain, useWriteContract } from "wagmi";
 import { injected, metaMask, walletConnect } from "wagmi/connectors";
-import { formatUnits, parseUnits } from "viem";
+import { formatUnits, maxUint256, parseUnits } from "viem";
 import "./styles.css";
 
 const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
@@ -330,7 +330,7 @@ function CollateralModal({ mode, config, onClose }: { mode: "deposit" | "withdra
       const value = parseUnits(amount || "0", 6);
       setStatus(mode === "deposit" ? "Approving USDC" : "Withdrawing");
       if (mode === "deposit") {
-        await writeContractAsync({ chainId: arcTestnet.id, address: config.usdcAddress, abi: erc20Abi, functionName: "approve", args: [config.collateralVaultAddress, value] });
+        await writeContractAsync({ chainId: arcTestnet.id, address: config.usdcAddress, abi: erc20Abi, functionName: "approve", args: [config.collateralVaultAddress, maxUint256] });
         setStatus("Depositing");
         await writeContractAsync({ chainId: arcTestnet.id, address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "deposit", args: [value] });
       } else {
