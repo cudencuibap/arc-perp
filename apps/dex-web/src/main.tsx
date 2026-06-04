@@ -676,8 +676,8 @@ function OrderTicket({ selected, mark, onLocalOrder }: { selected: MarketSymbol;
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        traderId: "human-demo",
-        agentId: "human-demo",
+        traderId: walletTraderId(address),
+        agentId: walletTraderId(address),
         symbol: selected,
         side,
         type,
@@ -801,20 +801,83 @@ function Tape({ trades }: { trades: Trade[] }) {
 
 function AccountDock({ positions, balances, selected, orders, trades }: { positions: Position[]; balances: MarketState["balances"]; selected: MarketSymbol; orders: LocalOrder[]; trades: Trade[] }) {
   const [tab, setTab] = useState<"Positions" | "Orders" | "Fills" | "Funding" | "Portfolio">("Positions");
-  const human = positions.find((position) => position.traderId === "human-demo");
-  const equity = balances.find((balance) => balance.traderId === "human-demo")?.equity ?? 100000;
-  const accountPositions = human ? [human, ...positions.filter((item) => item.traderId !== "human-demo")] : positions;
-  const usedMargin = positions.reduce((sum, position) => sum + position.margin, 0);
-  const pnl = positions.reduce((sum, position) => sum + position.unrealizedPnl, 0);
+  const { address } = useAccount();
+  const traderId = walletTraderId(address);
+  const [config, setConfig] = useState<OnchainConfig>();
+  const [closing, setClosing] = useState<string>();
+  useEffect(() => {
+    if (!ONCHAIN_CONFIG_URL) return;
+    fetch(ONCHAIN_CONFIG_URL).then((res) => res.json()).then(setConfig).catch(() => undefined);
+  }, []);
+  const vaultRead = useReadContracts({
+    contracts: address && config?.collateralVaultAddress ? [
+      { address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "balanceOf", args: [address] }
+    ] as const : undefined,
+    query: { enabled: Boolean(address && config?.collateralVaultAddress) }
+  });
+  const vaultBalance = vaultRead.data?.[0]?.result as bigint | undefined;
+
+  const walletLower = address?.toLowerCase();
+  const isMine = (item: { traderId: string; walletAddress?: string }) => item.traderId === traderId || (walletLower && item.walletAddress?.toLowerCase() === walletLower);
+  const myPositions = positions.filter(isMine);
+  const myFills = trades.filter((trade) => trade.buyerId === traderId || trade.sellerId === traderId);
+  const equity = balances.find((balance) => balance.traderId === traderId)?.equity ?? 100000;
+  const usedMargin = myPositions.reduce((sum, position) => sum + position.margin, 0);
+  const pnl = myPositions.reduce((sum, position) => sum + position.unrealizedPnl, 0);
+
+  async function closePosition(position: Position) {
+    const key = `${position.traderId}:${position.symbol}`;
+    setClosing(key);
+    try {
+      await fetch(`${MATCHING_ENGINE_URL}/orders`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          traderId,
+          agentId: traderId,
+          symbol: position.symbol,
+          side: position.size > 0 ? "sell" : "buy",
+          type: "market",
+          quantity: Math.abs(position.size),
+          leverage: position.leverage,
+          walletAddress: address,
+          settleOnchain: Boolean(address)
+        })
+      });
+    } finally {
+      setClosing(undefined);
+    }
+  }
+
   return <article className="panel positions">
-    <div className="panel-title"><h2><ShieldAlert size={17} /> Account</h2><span><Wallet size={14} /> {money(equity)}</span></div>
+    <div className="panel-title">
+      <h2><ShieldAlert size={17} /> Account</h2>
+      <span className="account-meta">
+        <em>{address ? shortAddress(address) : "Not connected"}</em>
+        <em title="On-chain CollateralVault balance">Deposited {vaultBalance != null ? formatUsdc(vaultBalance) : "—"}</em>
+        <em title="Simulated trading equity"><Wallet size={14} /> {money(equity)}</em>
+      </span>
+    </div>
     <div className="tabs">{(["Positions", "Orders", "Fills", "Funding", "Portfolio"] as const).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}</div>
     {tab === "Positions" && <>
-      <div className="position-grid head"><span>Trader</span><span>Market</span><span>Size</span><span>Entry</span><span>PnL</span><span>Liq</span></div>
-      {accountPositions.slice(0, 8).map((position) => <div className={`position-grid ${position.unrealizedPnl >= 0 ? "pnl-up" : "pnl-down"}`} key={`${position.traderId}-${position.symbol}`}>
-        <span>{position.traderId}</span><span>{position.symbol.replace("-PERP", "")}</span><span>{position.size.toFixed(3)}</span><span>{position.entryPrice.toFixed(2)}</span><span className={position.unrealizedPnl >= 0 ? "pos" : "neg"}>{position.unrealizedPnl.toFixed(2)}</span><span>{position.liquidationPrice.toFixed(2)}</span>
-      </div>)}
-      {positions.length === 0 && <div className="empty">No live {selected} positions yet</div>}
+      <div className="position-grid account head"><span>Market</span><span>Size</span><span>Entry</span><span>PnL</span><span>Liq</span><span>Notional</span><span>Margin</span><span>ROE%</span><span></span></div>
+      {myPositions.slice(0, 8).map((position) => {
+        const notional = Math.abs(position.size) * position.markPrice;
+        const roe = position.margin > 0 ? (position.unrealizedPnl / position.margin) * 100 : 0;
+        const key = `${position.traderId}:${position.symbol}`;
+        return <div className={`position-grid account ${position.unrealizedPnl >= 0 ? "pnl-up" : "pnl-down"}`} key={key}>
+          <span>{position.symbol.replace("-PERP", "")}</span>
+          <span>{position.size.toFixed(3)}</span>
+          <span>{position.entryPrice.toFixed(2)}</span>
+          <span className={position.unrealizedPnl >= 0 ? "pos" : "neg"}>{position.unrealizedPnl.toFixed(2)}</span>
+          <span>{position.liquidationPrice.toFixed(2)}</span>
+          <span>{compact(notional)}</span>
+          <span>{compact(position.margin)}</span>
+          <span className={roe >= 0 ? "pos" : "neg"}>{roe.toFixed(2)}%</span>
+          <button className="close-pos" onClick={() => closePosition(position)} disabled={closing === key} title="Market-close this position">{closing === key ? "…" : "×"}</button>
+        </div>;
+      })}
+      {myPositions.length === 0 && <div className="empty">{address ? "No positions for connected wallet — place an order to start" : "Connect wallet to see your positions"}</div>}
     </>}
     {tab === "Orders" && <>
       <div className="order-grid head"><span>Time</span><span>Market</span><span>Type</span><span>Side</span><span>Size</span><span>Status</span></div>
@@ -823,22 +886,26 @@ function AccountDock({ positions, balances, selected, orders, trades }: { positi
     </>}
     {tab === "Fills" && <>
       <div className="order-grid head"><span>Time</span><span>Market</span><span>Side</span><span>Price</span><span>Size</span><span>Notional</span></div>
-      {trades.slice(0, 12).map((trade) => <div className="order-grid" key={trade.id}><span>{new Date(trade.ts).toLocaleTimeString()}</span><span>{trade.symbol.replace("-PERP", "")}</span><span className={trade.takerSide === "buy" ? "pos" : "neg"}>{trade.takerSide}</span><span>{money(trade.price)}</span><span>{trade.quantity.toFixed(4)}</span><span>{compact(trade.price * trade.quantity)}</span></div>)}
-      {trades.length === 0 && <div className="empty">No fills yet</div>}
+      {myFills.slice(0, 12).map((trade) => {
+        const mySide = trade.buyerId === traderId ? "buy" : "sell";
+        return <div className="order-grid" key={trade.id}><span>{new Date(trade.ts).toLocaleTimeString()}</span><span>{trade.symbol.replace("-PERP", "")}</span><span className={mySide === "buy" ? "pos" : "neg"}>{mySide}</span><span>{money(trade.price)}</span><span>{trade.quantity.toFixed(4)}</span><span>{compact(trade.price * trade.quantity)}</span></div>;
+      })}
+      {myFills.length === 0 && <div className="empty">{address ? "No fills yet for connected wallet" : "Connect wallet to see your fills"}</div>}
     </>}
     {tab === "Funding" && <>
       <div className="order-grid head"><span>Time</span><span>Market</span><span>Rate</span><span>Payment</span><span>Status</span><span>Tx</span></div>
-      {positions.slice(0, 10).map((position, index) => {
+      {myPositions.slice(0, 10).map((position, index) => {
         const payment = position.size * position.markPrice * 0.0001 * (position.size > 0 ? -1 : 1);
         return <div className="order-grid" key={`${position.traderId}-${position.symbol}-funding`}><span>{new Date(Date.now() - index * 3600000).toLocaleTimeString()}</span><span>{position.symbol.replace("-PERP", "")}</span><span>0.0100%</span><span className={payment >= 0 ? "pos" : "neg"}>{money(payment)}</span><span>hourly</span><span>pending</span></div>;
       })}
-      {positions.length === 0 && <div className="empty">Funding history appears after positions open</div>}
+      {myPositions.length === 0 && <div className="empty">Funding history appears after positions open</div>}
     </>}
     {tab === "Portfolio" && <div className="portfolio-grid">
       <Metric label="Account value" value={money(equity + pnl)} />
       <Metric label="Unrealized PnL" value={money(pnl)} tone={pnl >= 0 ? "pos" : "neg"} />
       <Metric label="Used margin" value={money(usedMargin)} />
       <Metric label="Free collateral" value={money(Math.max(0, equity - usedMargin))} />
+      <Metric label="On-chain deposit" value={vaultBalance != null ? formatUsdc(vaultBalance) : "—"} />
     </div>}
   </article>;
 }
@@ -1125,6 +1192,10 @@ function formatUsdc(value?: bigint) {
 function shortAddress(address?: string) {
   if (!address) return "Wallet";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function walletTraderId(address?: string): string {
+  return address ? `human-${address.slice(2, 10).toLowerCase()}` : "human-demo";
 }
 
 function compact(value?: number) {

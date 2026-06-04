@@ -610,6 +610,12 @@ main {
 .position-grid.pnl-up { background: linear-gradient(90deg, rgba(56, 225, 160, 0.055), transparent 42%); }
 .position-grid.pnl-down { background: linear-gradient(90deg, rgba(255, 101, 124, 0.055), transparent 42%); }
 .position-grid.head { min-height: 30px; }
+.position-grid.account { grid-template-columns: .65fr .6fr .75fr .65fr .7fr .75fr .65fr .55fr 28px; font-size: 11px; }
+.position-grid.account .close-pos { background: rgba(255, 101, 124, 0.12); border: 1px solid rgba(255, 101, 124, 0.4); color: #ff657c; border-radius: 4px; width: 24px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+.position-grid.account .close-pos:hover:not(:disabled) { background: rgba(255, 101, 124, 0.25); }
+.position-grid.account .close-pos:disabled { opacity: 0.5; cursor: wait; }
+.account-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.account-meta em { font-style: normal; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #a4b1c2; }
 .order-grid {
   display: grid;
   grid-template-columns: .8fr .7fr 1fr .55fr .65fr 1.25fr;
