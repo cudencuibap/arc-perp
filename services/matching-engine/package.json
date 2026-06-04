@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "npm --workspace @arc-perp/core run build && tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js"
   },
   "dependencies": {
