@@ -1,11 +1,17 @@
+import dotenv from "dotenv";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: resolve(__dirname, "../../../.env") });
+
 import cors from "cors";
 import express from "express";
 import { collateralVaultAbi, perpSettlementAbi, type OnchainConfig } from "@arc-perp/core/onchain";
 import { createPublicClient, createWalletClient, getAddress, http, keccak256, parseAbiItem, parseUnits, stringToHex, type Address, type Hash } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const port = Number(process.env.SETTLEMENT_SERVICE_PORT ?? 4105);
 const rpcUrl = process.env.ARC_RPC_URL ?? "https://rpc.testnet.arc.network";
@@ -29,8 +35,6 @@ const publicClient = createPublicClient({ chain: arcChain, transport: http(rpcUr
 const account = settlementKey ? privateKeyToAccount(settlementKey) : undefined;
 const walletClient = account ? createWalletClient({ account, chain: arcChain, transport: http(rpcUrl) }) : undefined;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 const statePath = resolve(__dirname, "../data/settlement-events.json");
 const tmpStatePath = `${statePath}.tmp`;
 const vaultDeployBlock = BigInt(process.env.VAULT_DEPLOY_BLOCK ?? "0");
