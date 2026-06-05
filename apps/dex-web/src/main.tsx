@@ -811,11 +811,13 @@ function AccountDock({ positions, balances, selected, orders, trades }: { positi
   }, []);
   const vaultRead = useReadContracts({
     contracts: address && config?.collateralVaultAddress ? [
-      { address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "balanceOf", args: [address] }
+      { address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "balanceOf", args: [address] },
+      { address: config.collateralVaultAddress, abi: collateralVaultAbi, functionName: "availableOf", args: [address] }
     ] as const : undefined,
-    query: { enabled: Boolean(address && config?.collateralVaultAddress) }
+    query: { enabled: Boolean(address && config?.collateralVaultAddress), refetchInterval: 10000 }
   });
   const vaultBalance = vaultRead.data?.[0]?.result as bigint | undefined;
+  const vaultAvailable = vaultRead.data?.[1]?.result as bigint | undefined;
 
   const walletLower = address?.toLowerCase();
   const isMine = (item: { traderId: string; walletAddress?: string }) => item.traderId === traderId || (walletLower && item.walletAddress?.toLowerCase() === walletLower);
@@ -854,8 +856,9 @@ function AccountDock({ positions, balances, selected, orders, trades }: { positi
       <h2><ShieldAlert size={17} /> Account</h2>
       <span className="account-meta">
         <em>{address ? shortAddress(address) : "Not connected"}</em>
-        <em title="On-chain CollateralVault balance">Deposited {vaultBalance != null ? formatUsdc(vaultBalance) : "—"}</em>
-        <em title="Simulated trading equity"><Wallet size={14} /> {money(equity)}</em>
+        <em title="On-chain CollateralVault total deposit">Deposited {vaultBalance != null ? formatUsdc(vaultBalance) : "—"}</em>
+        <em title="On-chain CollateralVault available (balance − locked)">Available {vaultAvailable != null ? formatUsdc(vaultAvailable) : "—"}</em>
+        <em title="Unrealized P&L across your positions (sim engine)" className={pnl >= 0 ? "pos" : "neg"}>P&L {pnl >= 0 ? "+" : ""}{money(pnl)}</em>
       </span>
     </div>
     <div className="tabs">{(["Positions", "Orders", "Fills", "Funding", "Portfolio"] as const).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}</div>
