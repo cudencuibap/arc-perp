@@ -3,9 +3,16 @@ import express from "express";
 import { createServer } from "node:http";
 import { WebSocketServer } from "ws";
 import { createWorldState, MatchingEngine, type EngineEvent, type MarketSymbol, type OrderRequest } from "@arc-perp/core";
+import { computeRequiredMarginBaseUnits, defaultFetchBalance, evaluateRealBalance } from "./real-balance.js";
 
 const port = Number(process.env.MATCHING_ENGINE_PORT ?? process.env.PORT ?? 4101);
 const settlementUrl = process.env.SETTLEMENT_SERVICE_URL ?? "http://localhost:4105";
+// Phase 2b gate. Default off — flip true after agents are funded with on-chain USDC.
+const useRealBalance = process.env.ENGINE_USE_REAL_BALANCE === "true";
+// Arc constraint: USDC is the native gas token. Reserve a slice that the
+// engine never lets the wallet lock as margin so the wallet can always pay
+// for the next withdraw/transfer tx. 100_000 base units = 0.1 USDC.
+const gasReserveBaseUnits = BigInt(process.env.ENGINE_GAS_RESERVE_USDC_BASE_UNITS ?? "100000");
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: "/stream" });
@@ -17,9 +24,53 @@ app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "matching-engine" }));
 app.get("/state", (_req, res) => res.json(engine.state()));
-app.post("/orders", (req, res) => {
+app.post("/orders", async (req, res) => {
+  const order = req.body as OrderRequest;
+  if (useRealBalance && order.walletAddress) {
+    const markets = engine.state().markets.find((m) => m.symbol === order.symbol);
+    const referencePrice = order.type === "limit" && order.price ? order.price : markets?.markPrice ?? 0;
+    if (referencePrice <= 0) {
+      res.status(400).json({ error: "invalid_market", code: "INVALID_MARKET", message: "Market is waiting for external pricing" });
+      return;
+    }
+    const requiredBaseUnits = computeRequiredMarginBaseUnits({ quantity: order.quantity, price: referencePrice, leverage: order.leverage ?? 5 });
+    const decision = await evaluateRealBalance({
+      walletAddress: order.walletAddress,
+      requiredBaseUnits,
+      gasReserveBaseUnits,
+      projection: {
+        realizedBaseUnits: engine.getRealizedPnlBaseUnits(order.traderId),
+        unrealizedBaseUnits: engine.getUnrealizedPnlBaseUnits(order.traderId),
+        usedMarginBaseUnits: engine.getUsedMarginBaseUnits(order.traderId)
+      },
+      fetchBalance: (addr) => defaultFetchBalance(settlementUrl, addr)
+    });
+    if (decision.kind === "settlement_down") {
+      res.status(503)
+        .setHeader("Retry-After", "1")
+        .json({
+          error: "settlement_unreachable",
+          code: "SETTLEMENT_DOWN",
+          retryAfter: 1,
+          message: `Settlement service unreachable: ${decision.cause}. Retry in 1s.`
+        });
+      return;
+    }
+    console.log(`[matching-engine] balance fetch lat=${decision.latencyMs}ms trader=${order.traderId} avail=${decision.availableBaseUnits} required=${requiredBaseUnits}`);
+    if (decision.kind === "insufficient") {
+      res.status(400).json({
+        error: "insufficient_margin",
+        code: "INSUFFICIENT_MARGIN",
+        availableBaseUnits: decision.availableBaseUnits.toString(),
+        requiredBaseUnits: decision.requiredBaseUnits.toString(),
+        message: "Insufficient margin. Please deposit USDC first."
+      });
+      return;
+    }
+    engine.setRealBalance(order.traderId, decision.availableUsdc);
+  }
   try {
-    const result = engine.placeOrder(req.body as OrderRequest);
+    const result = engine.placeOrder(order);
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : "Invalid order" });

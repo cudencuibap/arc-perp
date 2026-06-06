@@ -105,6 +105,49 @@ export class MatchingEngine extends EventEmitter {
     return true;
   }
 
+  // Phase 2b: overwrite a trader's available balance from an external source
+  // (settlement service). No-op-friendly: also seeds equity to match. Bot
+  // traders without walletAddress are unaffected because the service wrapper
+  // never calls this for them.
+  setRealBalance(traderId: string, availableUsdc: number): void {
+    // availableUsdc is the wrapper's already-computed available margin
+    // (gross + realized + unrealized − used − gas_reserve). It is the value
+    // the engine uses to gate further order placement. equity is set to
+    // the same value here because the wrapper has authoritative knowledge
+    // of the on-chain deposit; realizedPnl stays as the engine's running
+    // tally so Phase 4 UI can still display it separately.
+    const balance = this.ensureBalance(traderId);
+    balance.available = availableUsdc;
+    balance.equity = availableUsdc;
+    this.balances.set(traderId, balance);
+    this.emitEvent({ type: "balance", payload: balance });
+  }
+
+  // Phase 2b: project engine state into 6-decimal USDC base units for the
+  // service wrapper's BigInt margin math. Conservative rounding — credits
+  // are floor()'d, debits are ceil()'d, so the wrapper's computed
+  // available_margin is ≤ true value by at most 1 base unit per term.
+  getRealizedPnlBaseUnits(traderId: string): bigint {
+    const b = this.balances.get(traderId);
+    return b ? conservativePnlBaseUnits(b.realizedPnl) : 0n;
+  }
+
+  getUnrealizedPnlBaseUnits(traderId: string): bigint {
+    // Round per-position (not sum-then-round) so each position contributes
+    // its own conservative quantum of error in the same direction.
+    return [...this.positions.values()]
+      .filter((p) => p.traderId === traderId)
+      .reduce((acc, p) => acc + conservativePnlBaseUnits(p.unrealizedPnl), 0n);
+  }
+
+  getUsedMarginBaseUnits(traderId: string): bigint {
+    // Margin is always positive (debit); ceil rounds magnitude UP so the
+    // wrapper never under-reserves locked collateral.
+    return [...this.positions.values()]
+      .filter((p) => p.traderId === traderId)
+      .reduce((acc, p) => acc + BigInt(Math.ceil(p.margin * 1_000_000)), 0n);
+  }
+
   state(): MarketState {
     return {
       symbols,
@@ -297,6 +340,16 @@ export class MatchingEngine extends EventEmitter {
       throw new Error("Limit price is outside live market band");
     }
   }
+}
+
+// Conservative rounding — bias floating-point conversion to never inflate
+// available_margin. Positive values (credits) floor; negative values (debits,
+// signed) round magnitude UP and re-sign. Worst-case error: 1 base unit per
+// term in the available_margin formula. Exported for unit testing.
+export function conservativePnlBaseUnits(value: number): bigint {
+  if (!Number.isFinite(value)) return 0n;
+  if (value >= 0) return BigInt(Math.floor(value * 1_000_000));
+  return -BigInt(Math.ceil(-value * 1_000_000));
 }
 
 function aggregate(orders: Order[], side: Side) {

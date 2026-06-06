@@ -94,3 +94,48 @@ For local development against the testnet, leaving the default is acceptable —
 ### `/history` is in-memory only
 
 The settlement record log resets on every restart. If real settlement writes are wired before this is persisted, restarting the service will lose visibility into prior settlement attempts (the on-chain effect is still durable).
+
+## Phase 2b — Real balance gate (matching-engine)
+
+The matching-engine `POST /orders` handler can route human/agent traders through a real-balance check before placing the order. Gate is off by default for safe rollout.
+
+### Feature flag
+
+| Env | Default | Behavior |
+|---|---|---|
+| `ENGINE_USE_REAL_BALANCE` | `false` | When `"true"`, orders carrying a `walletAddress` go through `evaluateRealBalance`; otherwise they take the existing sim path |
+| `ENGINE_GAS_RESERVE_USDC_BASE_UNITS` | `100000` (= 0.1 USDC) | Per-wallet base units reserved for Arc gas. Untouchable as margin. Arc uses USDC as native gas — without reserve, a wallet can lock all USDC into margin and brick its own ability to transact |
+| `SETTLEMENT_SERVICE_URL` | `http://localhost:4105` | Source of `/balances/:address` for the gate |
+
+Rollback: flip `ENGINE_USE_REAL_BALANCE=false` and restart matching-engine. Zero git churn.
+
+### available_margin formula
+
+Per the user-provided spec, in BigInt 6-decimal USDC base units:
+
+```
+available = (deposited − withdrawn)         ← from settlement /balances
+          + realized_pnl                     ← from engine state, conservative
+          + unrealized_pnl_using_mark_price  ← from engine state, conservative
+          − Σ(initial_margin of open positions)
+          − gas_reserve
+```
+
+The first term is exact (settlement listener stores base units). The middle three are projected from the matching-engine into base units by `getRealizedPnlBaseUnits`, `getUnrealizedPnlBaseUnits`, `getUsedMarginBaseUnits` with conservative rounding (credits floor, debits ceil-magnitude). Worst-case bias is ≤1 base unit per term against the user, never over-leveraging.
+
+### Error responses
+
+- **400 INSUFFICIENT_MARGIN** — available < required. Body includes `availableBaseUnits`, `requiredBaseUnits` as decimal strings for client retry math.
+- **503 SETTLEMENT_DOWN** — fetcher threw (network, non-JSON, non-200, timeout). Response includes `Retry-After: 1` header and `{ retryAfter: 1, code: "SETTLEMENT_DOWN" }` body for autonomous agent retry logic that parses by error code rather than message text.
+
+### Latency observability
+
+Every accepted/insufficient decision logs `[matching-engine] balance fetch lat=Xms trader=Y avail=Z required=R`. This is the input for the eventual decision to migrate from per-order HTTP polling to a WS push from settlement-service.
+
+### Known limitations introduced by Phase 2b
+
+1. **Cross margin only** — `setRealBalance` overwrites the trader's `available` globally. Isolated-margin per-position is not modeled. Deferred.
+2. **On-chain withdraw bypass** — `CollateralVault.withdraw(amount)` is callable by anyone for their own balance, with no guard against `lockedOf > 0` (because no one calls `lockCollateral`). A user with an open position can withdraw all their collateral on-chain; the listener picks it up and future orders reject, but the existing position survives and must be manually liquidated. Fix paths: wire `lockCollateral` from engine to vault (contract change, redeploy), or have the settlement listener detect Withdrawn → POST `/internal/forceClose` to engine. Deferred.
+3. **Engine restart wipes realized PnL + positions** — engine state is in-memory only. On restart, real_deposit reloads from the settlement listener (which persists), but PnL and positions reset to zero. Users effectively get a "free" reset on every engine restart. Defer engine state persistence to a later phase.
+4. **Deposit → trade latency** — Block confirmation + listener pickup adds ~1–2s between an approved on-chain deposit and the `/balances/:address` value reflecting it. Orders placed in that window will see the pre-deposit balance and may reject. Front-end should disable trading or show a "syncing" indicator after deposit confirms, until `/balances/:address.lastSeenBlock` advances past the deposit's block.
+5. **Agent funding requirement** — Agents (`market-makers`, `traders`, `treasury`) submit orders carrying their generated `walletAddress`. With `ENGINE_USE_REAL_BALANCE=true`, they go through the real-balance gate just like humans. They need on-chain USDC in their wallets first — set `AGENT_AUTO_DEPOSIT_USDC > 0` and operator wallet funds them on startup. Default `0` will cause every agent order to reject with INSUFFICIENT_MARGIN, draining the orderbook.

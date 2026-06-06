@@ -24,12 +24,16 @@
     "start:engine": "npm --workspace @arc-perp/matching-engine run start",
     "start:market-data": "npm --workspace @arc-perp/market-data run start",
     "start:settlement": "npm --workspace @arc-perp/settlement-service run start",
-    "start:agents": "npm --workspace @arc-perp/market-makers run start"
+    "start:agents": "npm --workspace @arc-perp/market-makers run start",
+    "test": "vitest run"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "viem": "^2.51.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.8"
   }
 }
