@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { Balance, EngineEvent, MarketMeta, MarketState, MarketSymbol, Order, OrderBookSnapshot, OrderRequest, Position, Side, Trade } from "./types.js";
+import type { Balance, EngineEvent, InternalState, MarketMeta, MarketState, MarketSymbol, Order, OrderBookSnapshot, OrderRequest, Position, Side, Trade } from "./types.js";
 
 const symbols: MarketSymbol[] = ["BTC-PERP", "ETH-PERP", "SOL-PERP"];
 const defaultMarks: Record<MarketSymbol, number> = {
@@ -87,6 +87,20 @@ export class MatchingEngine extends EventEmitter {
     this.pruneStaleOrders(symbol, next.markPrice);
     for (const position of [...this.positions.values()].filter((item) => item.symbol === symbol)) {
       this.revalue(position.traderId, symbol);
+      // Phase 3: atomic mark-based liquidation per Hyperliquid spec. Force-
+      // close any position whose updated mark has crossed its liquidationPrice
+      // before any caller can place new orders. Closes the mark-gap window
+      // that opens when the engine restarts with stale marks and the price
+      // moved against an open position during downtime. Idempotent against
+      // services/liquidation-engine — engine.liquidate early-returns false
+      // when the position no longer exists, so a stray poll from that
+      // auxiliary service is a no-op.
+      const refreshed = this.positions.get(positionKey(position.traderId, symbol));
+      if (!refreshed) continue;
+      const underwater = refreshed.size > 0
+        ? refreshed.markPrice <= refreshed.liquidationPrice
+        : refreshed.markPrice >= refreshed.liquidationPrice;
+      if (underwater) this.liquidate(refreshed.traderId, symbol);
     }
     this.emitEvent({ type: "mark", payload: next });
   }
@@ -161,6 +175,44 @@ export class MatchingEngine extends EventEmitter {
 
   agentList(): string[] {
     return [...this.agentIds];
+  }
+
+  // Phase 3 — engine state persistence boundary. getInternalState returns a
+  // deep-clone of every mutable private field so callers (persist module)
+  // can serialize without aliasing live engine state. restoreInternalState
+  // overwrites private state from a clone; caller is responsible for any
+  // post-restore notification (WS broadcast) and warmup gating.
+  getInternalState(): InternalState {
+    return {
+      books: new Map([...this.books.entries()].map(([symbol, side]) => [symbol, { bids: side.bids.map((o) => ({ ...o })), asks: side.asks.map((o) => ({ ...o })) }])),
+      balances: new Map([...this.balances.entries()].map(([traderId, balance]) => [traderId, { ...balance }])),
+      positions: new Map([...this.positions.entries()].map(([key, position]) => [key, { ...position }])),
+      trades: this.trades.map((trade) => ({ ...trade })),
+      markets: new Map([...this.markets.entries()].map(([symbol, meta]) => [symbol, { ...meta }])),
+      agentIds: new Set(this.agentIds)
+    };
+  }
+
+  restoreInternalState(state: InternalState): void {
+    this.books = new Map([...state.books.entries()].map(([symbol, side]) => [symbol, { bids: side.bids.map((o) => ({ ...o })), asks: side.asks.map((o) => ({ ...o })) }]));
+    this.balances = new Map([...state.balances.entries()].map(([traderId, balance]) => [traderId, { ...balance }]));
+    this.positions = new Map([...state.positions.entries()].map(([key, position]) => [key, { ...position }]));
+    this.trades = state.trades.map((trade) => ({ ...trade }));
+    this.markets = new Map([...state.markets.entries()].map(([symbol, meta]) => [symbol, { ...meta }]));
+    this.agentIds = new Set(state.agentIds);
+    // Re-seed any symbol the snapshot may have omitted so downstream code
+    // (book(), market()) never sees a missing entry.
+    for (const symbol of symbols) {
+      if (!this.books.has(symbol)) this.books.set(symbol, { bids: [], asks: [] });
+      if (!this.markets.has(symbol)) {
+        this.markets.set(symbol, {
+          symbol, markPrice: defaultMarks[symbol], indexPrice: defaultMarks[symbol],
+          fundingRate: 0.0001, openInterest: 0, volume24h: 0,
+          regime: "calm", spreadBps: 8, ts: Date.now()
+        });
+      }
+      this.sortBook(symbol);
+    }
   }
 
   private match(taker: Order): Trade[] {

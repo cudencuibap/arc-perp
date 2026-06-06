@@ -102,6 +102,19 @@ export interface MarketState {
   markets: MarketMeta[];
 }
 
+// Phase 3 — full engine state surface for serialization. Returned by
+// MatchingEngine.getInternalState; consumed by MatchingEngine.restoreInternalState.
+// Maps and Sets are preserved (not lossy-converted) so a direct restore is
+// possible without an intermediate JSON step.
+export interface InternalState {
+  books: Map<MarketSymbol, { bids: Order[]; asks: Order[] }>;
+  balances: Map<string, Balance>;
+  positions: Map<string, Position>;
+  trades: Trade[];
+  markets: Map<MarketSymbol, MarketMeta>;
+  agentIds: Set<string>;
+}
+
 export interface AgentNode {
   id: string;
   role: "market-maker" | "trader" | "liquidator" | "treasury" | "arbitrage";
